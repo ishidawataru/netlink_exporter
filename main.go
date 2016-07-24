@@ -31,12 +31,29 @@ import (
 )
 
 func main() {
-	var host = flag.String("db-host", "localhost:8086", "db host")
-	var dbname = flag.String("db-name", "netlink", "db name")
+	host := os.Getenv("NETLINK_EXPORTER_DB_HOST")
+	if host == "" {
+		host = "localhost:8086"
+	}
+	dbname := os.Getenv("NETLINK_EXPORTER_DB_NAME")
+	if dbname == "" {
+		dbname = "netlink"
+	}
+
+	var fHost = flag.String("db-host", "", "db host")
+	var fDbname = flag.String("db-name", "", "db name")
+
 	flag.Parse()
 
+	if *fHost != "" {
+		host = *fHost
+	}
+	if *fDbname != "" {
+		dbname = *fDbname
+	}
+
 	cli, err := influx.NewHTTPClient(influx.HTTPConfig{
-		Addr: fmt.Sprintf("http://%s", *host),
+		Addr: fmt.Sprintf("http://%s", host),
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -46,7 +63,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	q := influx.NewQuery(fmt.Sprintf("CREATE DATABASE %s", *dbname), "", "")
+	q := influx.NewQuery(fmt.Sprintf("CREATE DATABASE %s", dbname), "", "")
 	if res, err := cli.Query(q); err != nil || res.Error() != nil {
 		log.Fatal("can not create database ", dbname)
 	}
@@ -130,7 +147,7 @@ func main() {
 		}
 
 		bp, _ := influx.NewBatchPoints(influx.BatchPointsConfig{
-			Database:  *dbname,
+			Database:  dbname,
 			Precision: "ms",
 		})
 		bp.AddPoints(points)
